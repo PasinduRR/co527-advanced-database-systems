@@ -1,0 +1,120 @@
+db.createCollection( "customers" , {
+    validator : {
+        $and : [
+            {
+                "firstName" : { $type : "string" , $exists : true }
+            },
+            {
+                "lastName" : { $type : "string" , $exists : true }
+            },
+            {
+                "phoneNumber" : {
+                    $type : "string" ,
+                    $exists : true ,
+                    $regex : /^[0-9]{3}-[0-9]{3}-[0-9]{4}$/
+                }
+            },
+            {
+                "email" : {
+                    $type : "string" ,
+                    $exists : true
+                }
+            }
+        ]
+    }
+});
+
+db.createCollection("products", {
+    validator: {
+        $and: [
+            { "name": { $type: "string", $exists: true } },
+            { "price": { 
+                $type: "double", 
+                $exists: true, 
+                $gt: 0 
+            }},
+            { "productId": { $type: "string", $exists: true } }
+        ]
+    }
+});
+
+db.createCollection("transactions", {
+    validator: {
+        $and: [
+            { "id": { $type: "string", $exists: true } },
+            { "productId": { $type: "string", $exists: true } },
+            { "customerId": { $type: "string", $exists: true } },
+            { "payment": { 
+                $type: "string", 
+                $exists: true, 
+                $in: ["cash_on_delivery", "credit_card", "debit_card"] 
+            }},
+            { "amount": { 
+                $type: "double", 
+                $exists: true, 
+                $gt: 0 
+            }}
+        ]
+    }
+});
+
+db.blog.mapReduce(
+    function () { 
+        emit( this .author, this .likes); 
+    },
+    function ( author, likes ) { 
+        return Array .sum(likes); 
+    },
+    { 
+        out : "total_likes" 
+    }
+);
+
+var mapFunction1 = function () {
+    for (var i = 0; i < this.tags.length; i++) {
+        var tag = this.tags[i];
+        emit(tag, this.likes);
+    }
+};
+
+var reduceFunction1 = function (tag, likes) {
+    return Array.sum(likes);
+};
+
+db.blog.mapReduce(
+    mapFunction1,
+    reduceFunction1,
+    { out: "total_likes_per_tag" }
+);
+
+var mapFunction2 = function () {
+    var date = new Date(this.date);
+    var month = date.getMonth() + 1; // Adding 1 to get months from 1 to 12
+    emit(month, this.likes);
+};
+
+var reduceFunction2 = function (month, likes) {
+    return Array.sum(likes);
+};
+
+db.blog.mapReduce(
+    mapFunction2,
+    reduceFunction2,
+    { out: "total_likes_per_month" }
+);
+
+var mapFunction3 = function () {
+    var date = new Date(this.date);
+    var month = date.getMonth() + 1; // Adding 1 to get months from 1 to 12
+    emit({ author: this.author, month: month }, 1);
+};
+
+var reduceFunction3 = function (key, values) {
+    return Array.sum(values);
+};
+
+db.blog.mapReduce(
+    mapFunction3,
+    reduceFunction3,
+    { out: "total_posts_per_month_per_author" }
+);
